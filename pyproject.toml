@@ -1,0 +1,25 @@
+[project]
+name = "work-api"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Izlaster", email = "izmaylovle0@gmail.com"}
+]
+readme = "README.md"
+requires-python = "^3.7.3"
+dependencies = []
+
+[tool.poetry.dependencies]
+python = "^3.7.3"
+sentence-transformers = "2.2.2"
+faiss-cpu = "^1.7.2"
+numpy = "1.21.0"
+
+[[tool.poetry.source]]
+name = "local"
+url = "file://./packages"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
