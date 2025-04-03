@@ -1,5 +1,7 @@
 # Work API - Установка и запуск
 
+Все библиотеки по пути packages: https://drive.google.com/file/d/1CbyzGzI5clUOWdfs_jQQ_LRCtV03xhiX/view?usp=sharing
+
 Этот проект использует Poetry для управления зависимостями и поддерживает установку без доступа к интернету.
 
 ## Установка зависимостей
