@@ -84,7 +84,7 @@ poetry install --no-interaction --no-ansi
 
 Poetry попытается установить зависимости, используя пакеты из локальной папки `packages`.
 
-## 5. Запуск проекта
+## 4. Запуск проекта
 
 ```bash
 poetry run python server.py
