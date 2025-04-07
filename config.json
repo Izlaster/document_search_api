@@ -1,0 +1,18 @@
+{
+    "server": {
+      "port": 8000
+    },
+    "models": [
+      {
+        "name": "models/DeepPavlov_rubert-base-cased"
+      },
+      {
+        "name": "models/intfloat_multilingual-e5-large"
+      },
+      {
+        "name": "models/sentence-transformers_paraphrase-multilingual-mpnet-base-v2"
+      }
+    ],
+    "active_model_index": 2
+  }
+  

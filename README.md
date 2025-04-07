@@ -1,12 +1,14 @@
 # Work API — Установка и запуск на Debian
 
-**Важно:** В этом проекте зависимости устанавливаются через Poetry, и поддерживается установка без доступа к интернету с использованием локальной папки `packages`. Все необходимые библиотеки уже доступны по [ссылке](https://drive.google.com/file/d/1wh8s_qCxe7L6PHqr1kl9xenm816NOi3R/view?usp=sharing).
+**Важно:** В этом проекте зависимости устанавливаются через Poetry, и поддерживается установка без доступа к интернету с использованием локальных папок `packages` и `models`. Все необходимые библиотеки и модели уже доступны по [ссылке](https://drive.google.com/drive/folders/1Iqm3nbFJ1igK0UaeSm7KJMd_qFrHJFyM?usp=sharing).
+
+---
 
 ## 1. Установка Python 3.7.3 через pyenv (если требуется)
 
 Если на вашей системе нет нужной версии Python или установлена более новая, рекомендуется использовать **pyenv** для получения Python 3.7.3:
 
-### a. Установка зависимостей для pyenv (Debian):
+### a. Установка зависимостей для pyenv (Debian)
 
 ```bash
 sudo apt update
@@ -16,7 +18,7 @@ sudo apt install -y make build-essential libssl-dev zlib1g-dev \
     python-openssl git
 ```
 
-### b. Установка pyenv:
+### b. Установка pyenv
 
 ```bash
 curl https://pyenv.run | bash
@@ -52,6 +54,8 @@ pyenv local 3.7.3
 python --version
 ```
 
+---
+
 ## 2. Установка Poetry
 
 Убедитесь, что Python 3.7.3 активен (если использовали pyenv), затем установите Poetry:
@@ -65,6 +69,8 @@ curl -sSL https://install.python-poetry.org | python3 -
 ```bash
 poetry --version
 ```
+
+---
 
 ## 3. Установка зависимостей
 
@@ -84,9 +90,63 @@ poetry install --no-interaction --no-ansi
 
 Poetry попытается установить зависимости, используя пакеты из локальной папки `packages`.
 
-## 4. Запуск проекта
+---
+
+## 4. Конфигурация проекта
+
+Перед запуском убедитесь, что файл `config.json` существует и настроен. Пример:
+
+```json
+{
+  "server": {
+    "port": 8000
+  },
+  "models": [
+    { "name": "models/DeepPavlov_rubert-base-cased" },
+    { "name": "models/intfloat_multilingual-e5-large" },
+    { "name": "models/sentence-transformers_paraphrase-multilingual-mpnet-base-v2" }
+  ],
+  "active_model_index": 0
+}
+```
+
+- `models` — список моделей, доступных для загрузки.
+- `active_model_index` — индекс активной модели (начинается с 0).
+- `server.port` — порт, на котором запускается сервер.
+
+---
+
+## 5. Запуск проекта
 
 ```bash
 poetry run python server.py
 ```
 
+Сервер запустится на указанном в `config.json` порту. Пример ответа API:
+
+```
+POST /api/vector
+Content-Type: application/json
+
+{
+  "text": "Пример текста"
+}
+```
+
+Ответ:
+
+```json
+{
+  "vector": [0.123, -0.456, ...]
+}
+```
+
+---
+
+## 6. Логирование
+
+Сервер пишет логи в два потока:
+- в файл `server.log`
+- и одновременно в консоль
+
+Это позволяет удобно отслеживать работу и отлаживать проект.
