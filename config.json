@@ -1,18 +1,20 @@
 {
-    "server": {
-      "port": 8000
+  "server": {
+    "port": 8000
+  },
+  "models": [
+    {
+      "name": "DeepPavlov/rubert-base-cased"
     },
-    "models": [
-      {
-        "name": "models/DeepPavlov_rubert-base-cased"
-      },
-      {
-        "name": "models/intfloat_multilingual-e5-large"
-      },
-      {
-        "name": "models/sentence-transformers_paraphrase-multilingual-mpnet-base-v2"
-      }
-    ],
-    "active_model_index": 2
-  }
-  
+    {
+      "name": "intfloat/multilingual-e5-large"
+    },
+    {
+      "name": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    },
+    {
+      "name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    }
+  ],
+  "active_model_index": 3
+}

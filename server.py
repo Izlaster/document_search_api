@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -8,25 +9,29 @@ import logging
 with open("config.json", "r") as f:
     config = json.load(f)
 
-# Чтение активной модели и списка моделей
+# Чтение активной модели и списка моделей из конфигурации
 active_model_index = config.get("active_model_index", 0)
 models_list = config.get("models", [])
 if not models_list:
     raise Exception("Не задан ни один путь к модели в конфигурации.")
 
-MODEL_NAME = models_list[active_model_index]["name"]
+MODEL_HF_NAME = models_list[active_model_index]["name"]
+MODEL_LOCAL_NAME = MODEL_HF_NAME.replace("/", "_")
+LOCAL_MODEL_PATH = os.path.join("models", MODEL_LOCAL_NAME)
 
-# Настройка логирования (файл и консоль)
+# Создание папки models, если она не существует
+if not os.path.exists("models"):
+    os.makedirs("models")
+
+# Настройка логирования (вывод в файл и консоль)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Обработчик для файла
 file_handler = logging.FileHandler("server.log")
 file_handler.setLevel(logging.INFO)
 file_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 file_handler.setFormatter(file_formatter)
 
-# Обработчик для консоли
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
@@ -35,13 +40,19 @@ console_handler.setFormatter(console_formatter)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
-logger.info("Запуск сервера с моделью %s", MODEL_NAME)
+logger.info("Запуск сервера с моделью %s", MODEL_HF_NAME)
 
-# Загрузка модели
+# Загрузка модели: если локальная копия существует, загружаем её, иначе скачиваем по оригинальному имени
 try:
-    model = SentenceTransformer(MODEL_NAME)
+    if os.path.exists(LOCAL_MODEL_PATH):
+        logger.info("Локальная модель найдена по пути %s. Загружаем в оффлайн-режиме.", LOCAL_MODEL_PATH)
+        model = SentenceTransformer(LOCAL_MODEL_PATH)
+    else:
+        logger.info("Локальная модель по пути %s не найдена. Скачиваю модель %s и сохраняю её в папку models...", LOCAL_MODEL_PATH, MODEL_HF_NAME)
+        model = SentenceTransformer(MODEL_HF_NAME, cache_folder="models")
+        logger.info("Модель %s успешно скачана.", MODEL_HF_NAME)
 except Exception as e:
-    logger.error("Ошибка загрузки модели %s: %s", MODEL_NAME, e)
+    logger.error("Ошибка загрузки модели %s: %s", MODEL_HF_NAME, e)
     raise e
 
 def normalize_vector(v):
@@ -70,13 +81,12 @@ class SimpleHandler(BaseHTTPRequestHandler):
                 self.send_error(400, "Missing 'text' in JSON body")
                 return
 
-            # Векторизация
+            # Векторизация текста
             embedding = model.encode([input_text], convert_to_numpy=True)
             embedding = normalize_vector(embedding[0])
 
             self._set_headers()
             self.wfile.write(json.dumps({"vector": embedding}).encode('utf-8'))
-
         except json.JSONDecodeError:
             self.send_error(400, "Invalid JSON")
         except Exception as e:
