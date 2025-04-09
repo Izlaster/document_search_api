@@ -5,60 +5,70 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from sentence_transformers import SentenceTransformer
 import logging
 
-# Загрузка настроек из config.json
-with open("config.json", "r") as f:
+# === Базовая директория проекта ===
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# === Пути ===
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+DEFAULT_LOG_PATH = os.path.join(BASE_DIR, "server.log")
+SYSTEM_LOG_PATH = "/var/log/document_search/log.log"
+
+# === Загрузка настроек ===
+with open(CONFIG_PATH, "r") as f:
     config = json.load(f)
 
-# Чтение активной модели и списка моделей из конфигурации
 active_model_index = config.get("active_model_index", 0)
 models_list = config.get("models", [])
 if not models_list:
     raise Exception("Не задан ни один путь к модели в конфигурации.")
 
+# Имя модели и локальный путь
 MODEL_HF_NAME = models_list[active_model_index]["name"]
 MODEL_LOCAL_NAME = MODEL_HF_NAME.replace("/", "_")
-LOCAL_MODEL_PATH = os.path.join("models", MODEL_LOCAL_NAME)
+LOCAL_MODEL_PATH = os.path.join(MODELS_DIR, MODEL_LOCAL_NAME)
 
-# Создание папки models, если она не существует
-if not os.path.exists("models"):
-    os.makedirs("models")
+# Убедимся, что директория models существует
+os.makedirs(MODELS_DIR, exist_ok=True)
 
-# Настройка логирования (вывод в файл и консоль)
+# === Настройка логирования ===
+log_path = SYSTEM_LOG_PATH if os.access(os.path.dirname(SYSTEM_LOG_PATH), os.W_OK) else DEFAULT_LOG_PATH
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-file_handler = logging.FileHandler("server.log")
+file_handler = logging.FileHandler(log_path)
 file_handler.setLevel(logging.INFO)
-file_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-file_handler.setFormatter(file_formatter)
+file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
-console_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-console_handler.setFormatter(console_formatter)
+console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 logger.info("Запуск сервера с моделью %s", MODEL_HF_NAME)
 
-# Загрузка модели: если локальная копия существует, загружаем её, иначе скачиваем по оригинальному имени
+# === Загрузка модели ===
 try:
     if os.path.exists(LOCAL_MODEL_PATH):
-        logger.info("Локальная модель найдена по пути %s. Загружаем в оффлайн-режиме.", LOCAL_MODEL_PATH)
+        logger.info("Локальная модель найдена по пути %s. Загружаю в оффлайн-режиме.", LOCAL_MODEL_PATH)
         model = SentenceTransformer(LOCAL_MODEL_PATH)
     else:
-        logger.info("Локальная модель по пути %s не найдена. Скачиваю модель %s и сохраняю её в папку models...", LOCAL_MODEL_PATH, MODEL_HF_NAME)
-        model = SentenceTransformer(MODEL_HF_NAME, cache_folder="models")
-        logger.info("Модель %s успешно скачана.", MODEL_HF_NAME)
+        logger.info("Модель не найдена локально. Пытаюсь скачать %s и сохранить в %s...", MODEL_HF_NAME, MODELS_DIR)
+        model = SentenceTransformer(MODEL_HF_NAME, cache_folder=MODELS_DIR)
+        logger.info("Модель %s успешно скачана и сохранена.", MODEL_HF_NAME)
 except Exception as e:
     logger.error("Ошибка загрузки модели %s: %s", MODEL_HF_NAME, e)
     raise e
 
+# === Вспомогательная функция ===
 def normalize_vector(v):
     v = v / np.linalg.norm(v)
     return v.tolist()
 
+# === Обработчик HTTP-запросов ===
 class SimpleHandler(BaseHTTPRequestHandler):
     def _set_headers(self, code=200):
         self.send_response(code)
@@ -81,7 +91,6 @@ class SimpleHandler(BaseHTTPRequestHandler):
                 self.send_error(400, "Missing 'text' in JSON body")
                 return
 
-            # Векторизация текста
             embedding = model.encode([input_text], convert_to_numpy=True)
             embedding = normalize_vector(embedding[0])
 
@@ -92,6 +101,7 @@ class SimpleHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self.send_error(500, f"Server error: {str(e)}")
 
+# === Запуск сервера ===
 def run(port=config["server"]["port"]):
     server_address = ('', port)
     httpd = HTTPServer(server_address, SimpleHandler)
